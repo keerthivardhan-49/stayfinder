@@ -1,7 +1,4 @@
 {
-  "engines": {
-    "node": "20.20.0"
-  },
   "name": "majorproject",
   "version": "1.0.0",
   "description": "",
@@ -12,6 +9,9 @@
   },
   "author": "Keerthi Vardhan",
   "license": "ISC",
+  "engines": {
+    "node": "20.20.0"
+  },
   "dependencies": {
     "cloudinary": "^1.21.0",
     "connect": "^3.7.0",
