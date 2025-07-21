@@ -1,0 +1,33 @@
+<!-- success if success is empty then don't create a div -->
+
+<!-- Let’s say you flash a message like this:
+      req.flash("success", "Listing created successfully!");
+
+      Then when you access it using:
+         const msg = req.flash("success");
+        console.log(msg);
+
+      You will get:
+      ["Listing created successfully!"]
+
+      So yes, req.flash("success") always returns an array, even if there’s only one message.
+    -->
+
+<% if(success && success.length){ %> 
+<div class="alert alert-success  alert-dismissible fade show col-6 offset-3" role="alert">
+  <%= success  %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<%}  %>
+
+<% if(error && error.length){ %> 
+<div class="alert alert-danger  alert-dismissible fade show col-6 offset-3" role="alert">
+  <%= error  %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<%}  %>
+
+
+
+
+

@@ -1,0 +1,64 @@
+<% layout("/layouts/boilerplate.ejs") %>
+
+<div class="row mt-3">
+  <div class="col-8 offset-2">
+    <h2>Create a New Listing</h2>
+
+    <form action="/listings" method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="title" class="form-label">Title:</label>
+        <input type="text" name="listing[title]" class="form-control" required>
+        <div class="invalid-feedback">Title is required</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="description" class="form-label">Description:</label>
+        <textarea name="listing[description]" class="form-control" required></textarea>
+        <div class="invalid-feedback">Description is required</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="image" class="form-label">Image Upload:</label>
+        <!-- ✅ Updated field name (from listing[image] to image) -->
+        <input type="file" name="image" class="form-control">
+      </div>
+
+      <div class="mb-3">
+        <label for="price" class="form-label">Price:</label>
+        <input type="number" name="listing[price]" class="form-control" required>
+        <div class="invalid-feedback">Price is required</div>
+      </div>
+
+       <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" name="listing[category]" id="category" required>
+              <option disabled selected value="">Select a category</option>
+              <option value="Trending">Trending</option>
+              <option value="Rooms">Rooms</option>
+              <option value="Mountains">Mountains</option>
+              <option value="Camp">Camp</option>
+              <option value="House">House</option>
+              <option value="Beaches">Beaches</option>
+              <option value="Mountain city">Mountain city</option>
+              <option value="Pool">Pool</option>
+              <option value="Forest">Forest</option>
+            </select>
+        </div>
+
+
+      <div class="mb-3">
+        <label for="location" class="form-label">Location:</label>
+        <input type="text" name="listing[location]" class="form-control" required>
+        <div class="invalid-feedback">Location is required</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="country" class="form-label">Country:</label>
+        <input type="text" name="listing[country]" class="form-control" required>
+        <div class="invalid-feedback">Country is required</div>
+      </div>
+
+      <button type="submit" class="btn btn-danger">Create Listing</button>
+    </form>
+  </div>
+</div>
