@@ -4,48 +4,55 @@ if (process.env.NODE_ENV !== "production") {
     console.log("✅ Loaded .env for development");
 }
 
-
-
-// ✅ Import Core Dependencies
+// ✅ Core & Security Dependencies
 const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
+const helmet = require("helmet");
+const compression = require("compression");
 
-// ✅ Initialize Express App
+// ✅ Express App Initialization
 const app = express();
 
-// ✅ Import Mongoose Models
+// ✅ Mongoose Models
 const Listing = require('./Models/listing');
 const Review = require("./Models/review");
 const User = require("./Models/user");
 
-// ✅ Middleware for method override (_method in forms), parsing form data, and serving static files
+// ✅ Utility Modules
+const wrapAsync = require('./utils/wrapAsync');
+const ExpressError = require("./utils/ExpressError");
+const { listingSchema, reviewSchema } = require("./schema");
+
+// ✅ Middleware: Static, Form Parsing, Method Override
 app.use(methodOverride('_method'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "/public")));
 
-// ✅ Set up EJS as the view engine with ejs-mate layouts
+// ✅ Security & Performance Middlewares
+app.use(helmet());
+app.use(compression());
+
+// ✅ View Engine Setup
 app.engine('ejs', ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// ✅ Utility Modules
-const wrapAsync = require('./utils/wrapAsync'); // for clean async error handling
-const ExpressError = require("./utils/ExpressError"); // custom error class
-const { listingSchema, reviewSchema } = require("./schema"); // Joi schemas for validation
-
-// ✅ Session and Authentication Libraries
+// ✅ Session & Auth Libraries
 const session = require("express-session");
-const MongoStore = require("connect-mongo"); // for storing session data in MongoDB
-const flash = require("connect-flash"); // flash messages for feedback
+const MongoStore = require("connect-mongo");
+const flash = require("connect-flash");
 const passport = require("passport");
 const LocalStrategy = require("passport-local");
 
-// ✅ Connect to MongoDB Atlas using environment variable
+// ✅ MongoDB Connection
 const dbUrl = process.env.ATLASDB_URL;
-console.log("📡 Connecting to MongoDB URL:", dbUrl);
+
+if (process.env.NODE_ENV !== "production") {
+    console.log("📡 Connecting to MongoDB...");
+}
 
 async function main() {
     try {
@@ -57,49 +64,57 @@ async function main() {
 }
 main();
 
-// ✅ Configure session store using connect-mongo
+// ✅ Mongo Store for Sessions
 const store = MongoStore.create({
     mongoUrl: dbUrl,
     crypto: {
-        secret: process.env.SECRET, // encrypt session data
+        secret: process.env.SECRET
     },
-    touchAfter: 24 * 3600 // session update limit: once every 24 hours
+    touchAfter: 24 * 3600
 });
 
-// ✅ Handle MongoStore errors
 store.on("error", (err) => {
     console.log("❌ ERROR in MONGO SESSION Store", err);
 });
 
-// ✅ Session configuration
+// ✅ Session Configuration
 const sessionOptions = {
     store,
-    secret: process.env.SECRET, // secret key to sign session ID cookie
-    resave: false, // don’t save session if not modified
-    saveUninitialized: true, // save uninitialized sessions
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: false, // changed from true → false
     cookie: {
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // expires in 7 days
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        httpOnly: true // prevents client-side JavaScript from accessing the cookie
+        httpOnly: true
     }
 };
 
-// ✅ Use session and flash middlewares
 app.use(session(sessionOptions));
 app.use(flash());
 
-// ✅ Configure Passport for user authentication
+// ✅ Force HTTPS in Production (Render)
+if (process.env.NODE_ENV === "production") {
+    app.use((req, res, next) => {
+        if (req.headers["x-forwarded-proto"] !== "https") {
+            return res.redirect(`https://${req.headers.host}${req.url}`);
+        }
+        next();
+    });
+}
+
+// ✅ Passport Config
 app.use(passport.initialize());
 app.use(passport.session());
-passport.use(new LocalStrategy(User.authenticate())); // local strategy using passport-local-mongoose
-passport.serializeUser(User.serializeUser()); // how to store user in session
-passport.deserializeUser(User.deserializeUser()); // how to remove user from session
+passport.use(new LocalStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
-// ✅ Middleware to inject flash messages and current user info to all views
+// ✅ Flash + Current User Injection
 app.use((req, res, next) => {
     res.locals.success = req.flash("success");
     res.locals.error = req.flash("error");
-    res.locals.currUser = req.user; // logged-in user info
+    res.locals.currUser = req.user;
     next();
 });
 
@@ -108,27 +123,28 @@ const listingsRouter = require("./routes/listingRouter");
 const reviewsRouter = require("./routes/reviewRouter");
 const userRouter = require("./routes/userRouter");
 
-// ✅ Use Routers
 app.use("/listings", listingsRouter);
 app.use("/listings/:id/reviews", reviewsRouter);
 app.use("/", userRouter);
 
-// ✅ Catch-All Route for 404 errors
+// ✅ Health Check Route (optional)
+app.get("/health", (req, res) => {
+    res.send("OK");
+});
 
-
+// ✅ 404 Handler
 app.all(/.*/, (req, res, next) => {
-           next(new ExpressError(404, "Page Not Found"));
-      });
+    next(new ExpressError(404, "Page Not Found"));
+});
 
-// ✅ Error Handling Middleware
+// ✅ Error Handler
 app.use((err, req, res, next) => {
     const { status = 500, message = "Something went wrong!" } = err;
     res.status(status).render("error.ejs", { message });
 });
 
-// ✅ Start Server (Render provides process.env.PORT)
+// ✅ Start Server
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
     console.log(`✅ Server is listening on port ${port}`);
 });
-
