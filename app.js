@@ -120,9 +120,11 @@ app.use("/listings/:id/reviews", reviewsRouter);
 app.use("/", userRouter);
 
 // ✅ Catch-All Route for 404 errors
-app.all("/{*any}", (req, res, next) => {
-    next(new ExpressError(404, "Page Not Found!"));
-});
+
+
+app.all(/.*/, (req, res, next) => {
+           next(new ExpressError(404, "Page Not Found"));
+ });
 
 // ✅ Error Handling Middleware
 app.use((err, req, res, next) => {
