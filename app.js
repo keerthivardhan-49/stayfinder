@@ -1,51 +1,47 @@
-
-// if(process.env.NODE_ENV !=="production"){
-//     require('dotenv').config();
-//     console.log("Loaded .env file in development");
-// }
-// // console.log(process.env.SECRET);
-
-
-
-const express=require("express");
-const app=express();
-const mongoose=require("mongoose");
-const path=require("path");
-const methodOverride = require('method-override');
-const ejsMate=require('ejs-mate');
-
-
-//Including Models
-const Listing = require('./Models/listing');
-const Review =require("./Models/review.js");
-const User=require("./Models/user.js");
-
-
-app.use(methodOverride('_method'));
-app.set("view engine","ejs");
-app.set("views",path.join(__dirname,"views"));
-app.use(express.static(path.join(__dirname,"/public")));
-app.use(express.urlencoded({extended:true}));
-app.engine('ejs',ejsMate);
-
-
-
-const wrapAsync = require('./utils/wrapAsync');
-const ExpressError= require("./utils/ExpressError.js");
-// schema validation
-const { listingSchema,reviewSchema } = require("./schema.js");
-const session=require("express-session");
-const MongoStore=require("connect-mongo");
-const flash=require("connect-flash");
-const passport=require("passport");
-const LocalStrategy=require("passport-local");
-
-
+// ✅ Load environment variables from .env file in development
 if (process.env.NODE_ENV !== "production") {
     require('dotenv').config();
     console.log("✅ Loaded .env for development");
 }
 
+// ✅ Import Core Dependencies
+const express = require("express");
+const mongoose = require("mongoose");
+const path = require("path");
+const methodOverride = require("method-override");
+const ejsMate = require("ejs-mate");
+
+// ✅ Initialize Express App
+const app = express();
+
+// ✅ Import Mongoose Models
+const Listing = require('./Models/listing');
+const Review = require("./Models/review");
+const User = require("./Models/user");
+
+// ✅ Middleware for method override (_method in forms), parsing form data, and serving static files
+app.use(methodOverride('_method'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "/public")));
+
+// ✅ Set up EJS as the view engine with ejs-mate layouts
+app.engine('ejs', ejsMate);
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+// ✅ Utility Modules
+const wrapAsync = require('./utils/wrapAsync'); // for clean async error handling
+const ExpressError = require("./utils/ExpressError"); // custom error class
+const { listingSchema, reviewSchema } = require("./schema"); // Joi schemas for validation
+
+// ✅ Session and Authentication Libraries
+const session = require("express-session");
+const MongoStore = require("connect-mongo"); // for storing session data in MongoDB
+const flash = require("connect-flash"); // flash messages for feedback
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+
+// ✅ Connect to MongoDB Atlas using environment variable
 const dbUrl = process.env.ATLASDB_URL;
 console.log("📡 Connecting to MongoDB URL:", dbUrl);
 
@@ -57,93 +53,78 @@ async function main() {
         console.error("❌ MongoDB connection error:", err);
     }
 }
-
 main();
 
-
-
+// ✅ Configure session store using connect-mongo
 const store = MongoStore.create({
-    mongoUrl: dbUrl,               // URL of MongoDB (Atlas or localhost)
+    mongoUrl: dbUrl,
     crypto: {
-        secret: "honey"            // Used to encrypt session data before storing
+        secret: process.env.SECRET, // encrypt session data
     },
-    touchAfter: 24 * 3600          // Limit session updates to once every 24 hrs
+    touchAfter: 24 * 3600 // session update limit: once every 24 hours
 });
 
-store.on("error",()=>{
-    console.log("ERROR in MONGO SESSION Store",err);
+// ✅ Handle MongoStore errors
+store.on("error", (err) => {
+    console.log("❌ ERROR in MONGO SESSION Store", err);
 });
 
+// ✅ Session configuration
 const sessionOptions = {
-    store: store,                 // use the MongoDB session store
-    secret: "honey",              // used to sign the session ID cookie (prevent tampering)
-    resave: false,                // don’t force session to be saved if unmodified
-    saveUninitialized: true,     // save new sessions even if not modified
+    store,
+    secret: process.env.SECRET, // secret key to sign session ID cookie
+    resave: false, // don’t save session if not modified
+    saveUninitialized: true, // save uninitialized sessions
     cookie: {
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,  // set expiry 7 days ahead
-        maxAge: 7 * 24 * 60 * 60 * 1000,                // cookie valid for 7 days
-        httpOnly: true           // JS can’t access this cookie (XSS protection)
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // expires in 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true // prevents client-side JavaScript from accessing the cookie
     }
 };
 
-
-
-
+// ✅ Use session and flash middlewares
 app.use(session(sessionOptions));
 app.use(flash());
 
+// ✅ Configure Passport for user authentication
 app.use(passport.initialize());
 app.use(passport.session());
-passport.use(new LocalStrategy(User.authenticate()));//all user should be authenticated by LocalStrategy
+passport.use(new LocalStrategy(User.authenticate())); // local strategy using passport-local-mongoose
+passport.serializeUser(User.serializeUser()); // how to store user in session
+passport.deserializeUser(User.deserializeUser()); // how to remove user from session
 
-passport.serializeUser(User.serializeUser());//Meaning is to store all information about user into session
-passport.deserializeUser(User.deserializeUser());//Meaning is to unstore all information about user into session
-
-
-//Middleware used to send local variable data to all ejs files
-app.use((req,res,next)=>{
-    res.locals.success=req.flash("success");//to automatically render success to all views
-    res.locals.error=req.flash("error");
-    res.locals.currUser=req.user;
+// ✅ Middleware to inject flash messages and current user info to all views
+app.use((req, res, next) => {
+    res.locals.success = req.flash("success");
+    res.locals.error = req.flash("error");
+    res.locals.currUser = req.user; // logged-in user info
     next();
 });
 
+// ✅ Routes
+const listingsRouter = require("./routes/listingRouter");
+const reviewsRouter = require("./routes/reviewRouter");
+const userRouter = require("./routes/userRouter");
 
-//Assessing Routes
-const listingsRouter= require("./routes/listingRouter.js");
-const reviewsRouter=require("./routes/reviewRouter.js");
-const userRouter=require("./routes/userRouter.js");
+// ✅ Use Routers
+app.use("/listings", listingsRouter);
+app.use("/listings/:id/reviews", reviewsRouter);
+app.use("/", userRouter);
 
-
-//root route
-// app.get("/",(req,res)=>{
-//     res.send("hi iam root");
-// });
-
-
-
-
-//using routes from listing.js and review.js
-app.use("/listings",listingsRouter);
-app.use("/listings/:id/reviews",reviewsRouter);
-app.use("/",userRouter);
-
-
-
-app.all("/{*any}",(req,res,next)=>{
-    next(new ExpressError(404,"Page Not Found !"))
-}); 
-
-// TO Handle ERRORs we use error handling MIDDLEWARES  THESE ARE USED TO HIDE COMPLEX CODE ERROR TO USERS OF WEBSITE
-
-app.use((err,req,res,next)=>{
-    // console.log(err);
-    let{status=500,message="something went wrong!"}=err;
-    res.render("error.ejs",{message});
+// ✅ Catch-All Route for 404 errors
+app.all("/{*any}", (req, res, next) => {
+    next(new ExpressError(404, "Page Not Found!"));
 });
 
+// ✅ Error Handling Middleware
+app.use((err, req, res, next) => {
+    const { status = 500, message = "Something went wrong!" } = err;
+    res.status(status).render("error.ejs", { message });
+});
 
-app.listen(8080,()=>{
-    console.log("server is listening  on 8080");
-})
+// ✅ Start Server (Render provides process.env.PORT)
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+    console.log(`✅ Server is listening on port ${port}`);
+});
 
