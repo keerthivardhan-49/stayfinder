@@ -4,6 +4,14 @@ if (process.env.NODE_ENV !== "production") {
     console.log("✅ Loaded .env for development");
 }
 
+const requiredEnvVars = ["ATLASDB_URL", "SECRET", "CLOUD_NAME","CLOUD_API_KEY","CLOUD_API_SECRET"];
+requiredEnvVars.forEach((key) => {
+    if (!process.env[key]) {
+        console.error(`Missing required environment variable: ${key}`);
+        process.exit(1); 
+    }
+});
+
 // ✅ Import Core Dependencies
 const express = require("express");
 const mongoose = require("mongoose");
