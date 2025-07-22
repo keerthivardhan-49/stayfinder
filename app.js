@@ -5,14 +5,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 
-const requiredEnvVars = ["ATLASDB_URL", "SECRET", "CLOUD_NAME","CLOUD_API_KEY","CLOUD_API_SECRET","NODE_ENV"];
-requiredEnvVars.forEach((key) => {
-    if (!process.env[key]) {
-        console.error(`Missing required environment variable: ${key}`);
-        process.exit(1); 
-        
-    }
-});
 
 // ✅ Import Core Dependencies
 const express = require("express");
@@ -126,7 +118,7 @@ app.use("/", userRouter);
 
 app.all(/.*/, (req, res, next) => {
            next(new ExpressError(404, "Page Not Found"));
- });
+      });
 
 // ✅ Error Handling Middleware
 app.use((err, req, res, next) => {
