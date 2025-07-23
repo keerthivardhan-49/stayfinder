@@ -11,7 +11,7 @@
   "author": "Keerthi Vardhan",
   "license": "ISC",
   "engines": {
-    "node": "20.20.0"
+    "node": "20.10.0"
   },
   "dependencies": {
     "cloudinary": "^1.21.0",
